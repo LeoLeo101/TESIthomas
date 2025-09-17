@@ -7,6 +7,7 @@ library(tidyr)
 library(lubridate)
 library(ggplot2)
 library(slider)
+library(readr)
 
 #CARICAMENTO DATI 
 
@@ -151,4 +152,38 @@ ggplot(plot_dataMB, aes(x = ym, color = Factor)) +
 
 #CORRELZIONE TRA INDICI
 cor(indexMBadj[, c("SMB", "HML", "MB")], method = "spearman", use = "complete.obs")
+
+
+#TOLGO IL RFR AI RENDIEMNTI DEI SINGOLI PORTAFOGLI
+
+matrixFinal <- matrix %>%
+  left_join(index %>% select(date, MB), by = "date")%>%
+  left_join(dfRFR %>% mutate(date = as.Date(paste0(ym, "-01")))%>% select(date,monthlyRFR), by = "date") %>%
+  mutate(across(2:10, ~ .x - monthlyRFR))
+
+#FACCIO LE REGRESSIONI e calcolo l' adj R2 medio dei due
+
+colsFF <- names(matrixFinal)[2:10]
+
+adjR2FF <- sapply(colsFF, function(col) {
+  model <- lm(as.formula(paste(col, "~ MB + SMB + HML")), data = matrixFinal)
+  summary(model)$adj.r.squared
+})
+
+mean_adjR2FF <- mean(adjR2FF)
+
+
+colsCAPM <- names(matrixFinal)[2:10]
+
+adjR2CAPM <- sapply(colsCAPM, function(col) {
+  model <- lm(as.formula(paste(col, "~ MB")), data = matrixFinal)
+  summary(model)$adj.r.squared
+})
+
+mean_adjR2CAPM <- mean(adjR2CAPM)
+
+print(mean_adjR2FF)
+print(mean_adjR2CAPM)
+
+
 
